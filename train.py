@@ -1,4 +1,3 @@
-
 import argparse
 import tensorflow as tf
 import numpy as np
@@ -10,6 +9,9 @@ from preprocessing.read_data import download_resnet_checkpoint_if_necessary, tf_
     rescale_image_and_annotation_by_factor, scale_image_with_crop_padding, \
     random_flip_image_and_annotation, distort_randomly_image_color
 from preprocessing import training
+import sys
+import smtplib
+import datetime
 
 # 0=background
 # 1=aeroplane
@@ -39,7 +41,7 @@ parser = argparse.ArgumentParser()
 envarg = parser.add_argument_group('Training params')
 envarg.add_argument("--batch_norm_epsilon", type=float, default=1e-5, help="batch norm epsilon argument for batch normalization")
 envarg.add_argument('--batch_norm_decay', type=float, default=0.9997, help='batch norm decay argument for batch normalization.')
-envarg.add_argument("--number_of_classes", type=int, default=21, help="Number of classes to be predicted.")
+envarg.add_argument("--number_of_classes", type=int, default=4, help="Number of classes to be predicted.")
 envarg.add_argument("--l2_regularizer", type=float, default=0.0001, help="l2 regularizer parameter.")
 envarg.add_argument('--starting_learning_rate', type=float, default=0.00001, help="initial learning rate.")
 envarg.add_argument("--multi_grid", type=list, default=[1,2,4], help="Spatial Pyramid Pooling rates")
@@ -152,7 +154,7 @@ saver = tf.train.Saver()
 
 current_best_val_loss = np.inf
 
-with tf.Session() as sess:
+with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     # Create the summary writer -- to write all the tboard_log
     # into a specified file. This file can be later read by tensorboard.
     train_writer = tf.summary.FileWriter(LOG_FOLDER + "/train", sess.graph)
@@ -232,6 +234,7 @@ with tf.Session() as sess:
         print("Global step:", global_step_np, "Average train loss:",
               training_average_loss, "\tGlobal Validation Avg Loss:", validation_global_loss,
               "MIoU:", validation_average_miou)
+        print('Current time: datetime.datetime.now()')
 
         test_writer.add_summary(summary_string, global_step_np)
 
