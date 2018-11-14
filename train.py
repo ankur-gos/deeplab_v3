@@ -234,7 +234,7 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         print("Global step:", global_step_np, "Average train loss:",
               training_average_loss, "\tGlobal Validation Avg Loss:", validation_global_loss,
               "MIoU:", validation_average_miou)
-        print('Current time: datetime.datetime.now()')
+        print('Current time:' + datetime.datetime.now())
 
         test_writer.add_summary(summary_string, global_step_np)
 
