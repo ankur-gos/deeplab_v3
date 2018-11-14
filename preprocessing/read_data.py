@@ -3,7 +3,6 @@ from preprocessing.inception_preprocessing import apply_with_random_selector, di
 import urllib
 import tarfile
 import os
-import ipdb
 
 def random_flip_image_and_annotation(image_tensor, annotation_tensor, image_shape):
     """Accepts image tensor and annotation tensor and returns randomly flipped tensors of both.
@@ -126,7 +125,6 @@ def tf_record_parser(record):
 
     height = tf.cast(features['height'], tf.int32)
     width = tf.cast(features['width'], tf.int32)
-    height = tf.Print(height, [height, width, tf.shape(annotation), tf.shape(image)])
 
     # reshape input and annotation images
     image = tf.reshape(image, (height, width, 3), name="image_reshape")
