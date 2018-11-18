@@ -12,52 +12,44 @@ from preprocessing import training
 import sys
 import smtplib
 import datetime
+import random
 
 # 0=background
-# 1=aeroplane
-# 2=bicycle
-# 3=bird
-# 4=boat
-# 5=bottle
-# 6=bus
-# 7=car
-# 8=cat
-# 9=chair
-# 10=cow
-# 11=diningtable
-# 12=dog
-# 13=horse
-# 14=motorbike
-# 15=person
-# 16=potted plant
-# 17=sheep
-# 18=sofa
-# 19=train
-# 20=tv/monitor
+# 1=table
+# 2=figure
+# 3=equation
 # 255=unknown
 
 parser = argparse.ArgumentParser()
 
 envarg = parser.add_argument_group('Training params')
 envarg.add_argument("--batch_norm_epsilon", type=float, default=1e-5, help="batch norm epsilon argument for batch normalization")
+rand_bne = 10 ** random.randint(-6, -3)
 envarg.add_argument('--batch_norm_decay', type=float, default=0.9997, help='batch norm decay argument for batch normalization.')
 envarg.add_argument("--number_of_classes", type=int, default=4, help="Number of classes to be predicted.")
 envarg.add_argument("--l2_regularizer", type=float, default=0.0001, help="l2 regularizer parameter.")
+rand_l2 = 10 ** random.randint(-6, 1)
 envarg.add_argument('--starting_learning_rate', type=float, default=0.00001, help="initial learning rate.")
+rand_learning_rate = 10 ** random.randint(-6, 1)
 envarg.add_argument("--multi_grid", type=list, default=[1,2,4], help="Spatial Pyramid Pooling rates")
 envarg.add_argument("--output_stride", type=int, default=16, help="Spatial Pyramid Pooling rates")
 envarg.add_argument("--gpu_id", type=int, default=0, help="Id of the GPU to be used")
 envarg.add_argument("--crop_size", type=int, default=513, help="Image Cropsize.")
-envarg.add_argument("--resnet_model", default="resnet_v2_50", choices=["resnet_v2_50", "resnet_v2_101", "resnet_v2_152", "resnet_v2_200"], help="Resnet model to use as feature extractor. Choose one of: resnet_v2_50 or resnet_v2_101")
-
+rand_crop_size = random.randint(300, 800)
+rchoices = ["resnet_v2_50", "resnet_v2_101", "resnet_v2_152", "resnet_v2_200"]
+envarg.add_argument("--resnet_model", default="resnet_v2_50", choices=rchoices, help="Resnet model to use as feature extractor. Choose one of: resnet_v2_50 or resnet_v2_101")
+rand_resnet = random.choice(rchoices)
 envarg.add_argument("--current_best_val_loss", type=int, default=99999, help="Best validation loss value.")
 envarg.add_argument("--accumulated_validation_miou", type=int, default=0, help="Accumulated validation intersection over union.")
 
 trainarg = parser.add_argument_group('Training')
 trainarg.add_argument("--batch_size", type=int, default=8, help="Batch size for network train.")
 
-args = parser.parse_args()
+
+args = parser.parse_args(['--batch_norm_epsilon', str(rand_bne), '--l2_regularizer', str(rand_l2), '--starting_learning_rate', str(rand_learning_rate), '--crop_size', str(rand_crop_size), '--resnet_model', rand_resnet])
 os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu_id)
+with open('runconfig.txt', 'w') as wf:
+    wf.write('resnet: {}, batch norm epsilon: {}, l2 regularization: {}, start learning rate: {}, crop size: {}\n'.format(rand_resnet, rand_bne, rand_l2, rand_learning_rate, rand_crop_size))
 
 LOG_FOLDER = './tboard_logs'
 TRAIN_DATASET_DIR="./dataset/tfrecords"

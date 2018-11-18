@@ -1,7 +1,9 @@
 import tensorflow as tf
 print("TF version:", tf.__version__)
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 import network
 slim = tf.contrib.slim
 import os
