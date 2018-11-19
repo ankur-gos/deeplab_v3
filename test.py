@@ -122,6 +122,7 @@ with tf.Session() as sess:
 
     while True:
         try:
+            j = 0
             batch_images_np, batch_predictions_np, batch_labels_np, batch_shapes_np, summary_string = \
                 sess.run([batch_images_tf, predictions_tf, batch_labels_tf, batch_shapes_tf, merged_summary_op])
 
@@ -163,7 +164,8 @@ with tf.Session() as sess:
                 ax1.imshow(input_image.astype(np.uint8))
                 ax2.imshow(label_image)
                 ax3.imshow(pred_image)
-                plt.show()
+                plt.savefig('result_images/bX_rX_{}_{}.png'.format(j, i))
+                j += 1
 
         except tf.errors.OutOfRangeError:
             break
