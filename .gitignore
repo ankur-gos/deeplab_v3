@@ -3,3 +3,4 @@ __pycache__
 resnet/
 dataset/
 runconfig.txt
+records.zip
