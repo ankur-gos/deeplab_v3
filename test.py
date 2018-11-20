@@ -158,7 +158,7 @@ with tf.Session() as sess:
                 ax1.imshow(input_image.astype(np.uint8))
                 ax2.imshow(label_image)
                 ax3.imshow(pred_image)
-                plt.savefig('result_images/bX_rX_{}_{}.png'.format(j, i))
+                plt.savefig('result_image/bX_rX_{}_{}.png'.format(j, i))
             j += 1
 
         except tf.errors.OutOfRangeError:
