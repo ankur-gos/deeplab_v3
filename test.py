@@ -44,27 +44,12 @@ class Dotdict(dict):
 args = Dotdict(args)
 
 # 0=background
-# 1=aeroplane
-# 2=bicycle
-# 3=bird
-# 4=boat
-# 5=bottle
-# 6=bus
-# 7=car
-# 8=cat
-# 9=chair
-# 10=cow
-# 11=diningtable
-# 12=dog
-# 13=horse
-# 14=motorbike
-# 15=person
-# 16=potted plant
-# 17=sheep
-# 18=sofa
-# 19=train
-# 20=tv/monitor
-# 255=unknown
+# 1=figure
+# 2=table
+# 3=equation
+# 4=text
+
+class_dict = {0: 'background', 1: 'figure', 2: 'table', 3: 'equation', 4: 'text'}
 
 class_labels = [v for v in range((args.number_of_classes+1))]
 class_labels[-1] = 255
@@ -119,6 +104,7 @@ with tf.Session() as sess:
     mean_pixel_acc = []
     mean_freq_weighted_IU = []
     mean_acc = []
+    mean_class_IU = {}
 
     while True:
         try:
@@ -153,6 +139,14 @@ with tf.Session() as sess:
                 m_acc = mean_accuracy(pred_image, label_image)
                 IoU = mean_IU(pred_image, label_image)
                 freq_weighted_IU = frequency_weighted_IU(pred_image, label_image)
+                class_IU = mean_IU_classes(pred_image, label_image)
+                for cl in class_IU:
+                    cl_IU = class_IU[cl]
+                    if cl not in mean_class_IU:
+                        mean_class_IU[cl] = [cl_IU]
+                    else:
+                        curr = mean_class_IU[cl]
+                        mean_class_IU = curr.append(cl_IU)
 
                 mean_pixel_acc.append(pix_acc)
                 mean_acc.append(m_acc)
@@ -174,3 +168,7 @@ with tf.Session() as sess:
     print("Mean accuraccy:", np.mean(mean_acc))
     print("Mean IoU:", np.mean(mean_IoU))
     print("Mean frequency weighted IU:", np.mean(mean_freq_weighted_IU))
+    for cl in mean_class_IU:
+        vals = mean_class_IU[cl]
+        label = class_dict[cl]
+        print("{} Mean IoU: {}".format(label, np.mean(vals)))

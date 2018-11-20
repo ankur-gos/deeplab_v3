@@ -91,6 +91,34 @@ def mean_IU(eval_segm, gt_segm):
     mean_IU_ = np.sum(IU) / n_cl_gt
     return mean_IU_
 
+def mean_IU_classes(eval_segm, gt_segm):
+    '''
+    (1/n_cl) * sum_i(n_ii / (t_i + sum_j(n_ji) - n_ii))
+    '''
+
+    check_size(eval_segm, gt_segm)
+
+    cl, n_cl   = union_classes(eval_segm, gt_segm)
+    _, n_cl_gt = extract_classes(gt_segm)
+    eval_mask, gt_mask = extract_both_masks(eval_segm, gt_segm, cl, n_cl)
+
+    IU = {}
+
+    for i, c in enumerate(cl):
+        curr_eval_mask = eval_mask[i, :, :]
+        curr_gt_mask = gt_mask[i, :, :]
+ 
+        if (np.sum(curr_eval_mask) == 0) or (np.sum(curr_gt_mask) == 0):
+            continue
+
+        n_ii = np.sum(np.logical_and(curr_eval_mask, curr_gt_mask))
+        t_i  = np.sum(curr_gt_mask)
+        n_ij = np.sum(curr_eval_mask)
+
+        IU[cl] = n_ii / (t_i + n_ij - n_ii)
+
+    return IU
+
 def frequency_weighted_IU(eval_segm, gt_segm):
     '''
     sum_k(t_k)^(-1) * sum_i((t_i*n_ii)/(t_i + sum_j(n_ji) - n_ii))
