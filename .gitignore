@@ -4,3 +4,5 @@ resnet/
 dataset/
 runconfig.txt
 records.zip
+tboard_logs/
+result_image/
