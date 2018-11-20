@@ -145,8 +145,7 @@ with tf.Session() as sess:
                     if cl not in mean_class_IU:
                         mean_class_IU[cl] = [cl_IU]
                     else:
-                        curr = mean_class_IU[cl]
-                        mean_class_IU = curr.append(cl_IU)
+                        mean_class_IU[cl].append(cl_IU)
 
                 mean_pixel_acc.append(pix_acc)
                 mean_acc.append(m_acc)
