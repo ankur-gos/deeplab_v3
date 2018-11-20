@@ -115,7 +115,7 @@ def mean_IU_classes(eval_segm, gt_segm):
         t_i  = np.sum(curr_gt_mask)
         n_ij = np.sum(curr_eval_mask)
 
-        IU[cl] = n_ii / (t_i + n_ij - n_ii)
+        IU[c] = n_ii / (t_i + n_ij - n_ii)
 
     return IU
 
