@@ -143,8 +143,8 @@ with tf.Session() as sess:
                 label_boxes = input_image.copy()
                 predicted_boxes = input_image.copy()
                 # TODO: Factor this out and make it general
-                colors = [np.array([90, 50, 60]), np.array([90, 90, 90]), np.array([200, 50, 60])
-                            , np.array([150, 200, 60]), np.array([200, 50, 200])]
+                colors = [np.array([90, 50, 60]), np.array([90, 90, 90]), np.array([200, 50, 60]),
+                          np.array([150, 200, 60]), np.array([200, 50, 200])]
                 for cl in bounding_boxes_pred:
                     bxs = bounding_boxes_pred[cl]
                     for coords in bxs:
