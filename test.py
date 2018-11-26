@@ -12,6 +12,8 @@ import json
 from preprocessing.read_data import tf_record_parser, scale_image_with_crop_padding
 from preprocessing import training
 from metrics import *
+from bounding_boxes.bound import get_bounds
+
 
 plt.interactive(False)
 
@@ -135,6 +137,36 @@ with tf.Session() as sess:
                     pred_image = np.reshape(pred_image, (heights[i], widths[i]))
                     input_image = np.reshape(input_image, (heights[i], widths[i], 3))
 
+                # Get bounding boxes of things
+                bounding_boxes_pred = get_bounds(pred_image)
+                bounding_boxes_label = get_bounds(label_image, pixel_dist=0)
+                label_boxes = input_image.copy()
+                predicted_boxes = input_image.copy()
+                # TODO: Factor this out and make it general
+                colors = [np.array([90, 50, 60]), np.array([90, 90, 90]), np.array([200, 50, 60])
+                            , np.array([150, 200, 60]), np.array([200, 50, 200])]
+                for cl in bounding_boxes_pred:
+                    bxs = bounding_boxes_pred[cl]
+                    for coords in bxs:
+                        tl_x, tl_y = coords[0]
+                        br_x, br_y = coords[1]
+                        coord_color = colors[coords]
+                        predicted_boxes[tl_x:br_x + 1, tl_y] = coord_color
+                        predicted_boxes[tl_x:br_x + 1, br_y] = coord_color
+                        predicted_boxes[tl_x, tl_y:br_y+1] = coord_color
+                        predicted_boxes[br_x, tl_y:br_y+1] = coord_color
+
+                for cl in bounding_boxes_label:
+                    bxs = bounding_boxes_label[cl]
+                    for coords in bxs:
+                        tl_x, tl_y = coords[0]
+                        br_x, br_y = coords[1]
+                        coord_color = colors[coords]
+                        label_boxes[tl_x:br_x + 1, tl_y] = coord_color
+                        label_boxes[tl_x:br_x + 1, br_y] = coord_color
+                        label_boxes[tl_x, tl_y:br_y+1] = coord_color
+                        label_boxes[br_x, tl_y:br_y+1] = coord_color
+
                 pix_acc = pixel_accuracy(pred_image, label_image)
                 m_acc = mean_accuracy(pred_image, label_image)
                 IoU = mean_IU(pred_image, label_image)
@@ -152,11 +184,13 @@ with tf.Session() as sess:
                 mean_IoU.append(IoU)
                 mean_freq_weighted_IU.append(freq_weighted_IU)
 
-                f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 8))
+                f, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(20, 20))
 
                 ax1.imshow(input_image.astype(np.uint8))
                 ax2.imshow(label_image)
                 ax3.imshow(pred_image)
+                ax4.imshow(label_boxes)
+                ax5.imshow(predicted_boxes)
                 plt.savefig('result_image/bX_rX_{}_{}.png'.format(j, i))
             j += 1
 
