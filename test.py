@@ -70,7 +70,7 @@ test_dataset = test_dataset.batch(args.batch_size)
 iterator = test_dataset.make_one_shot_iterator()
 batch_images_tf, batch_labels_tf, batch_shapes_tf = iterator.get_next()
 
-logits_tf =  network.deeplab_v3(batch_images_tf, args, is_training=False, reuse=False)
+logits_tf = network.deeplab_v3(batch_images_tf, args, is_training=False, reuse=False)
 
 valid_labels_batch_tf, valid_logits_batch_tf = training.get_valid_logits_and_labels(
     annotation_batch_tensor=batch_labels_tf,
