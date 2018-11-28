@@ -5,21 +5,15 @@ Run a trained model on a dataset
 
 import tensorflow as tf
 print("TF version:", tf.__version__)
-import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
-import imageio
-import matplotlib.pyplot as plt
 import network
 slim = tf.contrib.slim
 import os
 import argparse
 import json
-from preprocessing.read_data import tf_record_parser, scale_image_with_crop_padding
-from preprocessing import training
 from metrics import *
-from bounding_boxes.bound import get_bounds
-from dataset.write_dataset import write_dataset
+from stitching.write_dataset import write_dataset
 
 
 parser = argparse.ArgumentParser()
