@@ -51,6 +51,7 @@ def get_patches(image_np):
 
 
 # TODO: Factor our magic numbers here
+# This is some ugly code
 def stitch_image(merge_buffer, image_name):
     pred_images = []
     input_images = []
@@ -65,13 +66,15 @@ def stitch_image(merge_buffer, image_name):
             width = image_width
             pred_images.append(pred_image)
             input_images.append(input_image)
-    final_predicted_image = None
     i = 0
     j = 0
     # Initialize to a non class nd array
     final_predicted_image = np.full((4, height, width), -1)
-    layer_index = {}
     for image in pred_images:
+        marker_i = i * 45
+        marker_j = j * 45
+        marker_i1 = (i + 1) * 45
+        marker_j1 = (j + 1) * 45
         if i == 0 and j == 0:
             final_predicted_image[0, :53, :53] = image
             j += 1
@@ -81,7 +84,7 @@ def stitch_image(merge_buffer, image_name):
             bottom_image = image[16:, :]
             final_predicted_image[1, marker_j-8:marker_j+8, :53] = top_image
             final_predicted_image[0, marker_j+8:, :53] = bottom_image
-            if (j + 1) * 45 == final_predicted_image.shape[1]:
+            if marker_j1 == final_predicted_image.shape[1]:
                 j = 0
                 i += 1
             else:
@@ -91,25 +94,45 @@ def stitch_image(merge_buffer, image_name):
             top_left_image = image[:37, :16]
             bottom_left_image = image[37:, :16]
             right_image = image[:, 16:]
-            final_predicted_image[1, :]
+            final_predicted_image[1, :marker_j1-8, marker_i-8:marker_i+8] = top_left_image
+            final_predicted_image[2, marker_j1-8:marker_j1+8, marker_i-8:marker_i+8] = bottom_left_image
+            final_predicted_image[0, :marker_j1+8, marker_i+8:marker_i1+8] = right_image
+            j += 1
+            continue
+        if marker_j == final_predicted_image.shape[1] - 45:
+            top_left_image = image[:16, :16]
+            bottom_left_image = image[16:, :16]
+            top_right_image = image[:16, 16:]
+            bottom_right_image = image[16:, 16:]
+            final_predicted_image[3, marker_j-8:marker_j+8, marker_i-8:marker_i+8] = top_left_image
+            final_predicted_image[1, marker_j+8:, marker_i-8:marker_i+8] = bottom_left_image
+            final_predicted_image[1, marker_j-8:marker_j+8, marker_i+8:marker_i1+8] = top_right_image
+            final_predicted_image[0, marker_j+8:, marker_i+8:marker_i1+8] = bottom_right_image
+            j = 0
+            i += 1
+            continue
+        top_left_image = image[:16, :16]
+        middle_left_image = image[16:-16, :16]
+        bottom_left_image = image[-16:, :16]
+        top_right_image = image[:16, 16:]
+        bottom_right_image = image[16:, 16:]
+        final_predicted_image[3, marker_j-8:marker_j+8, marker_i-8:marker_i+8] = top_left_image
+        final_predicted_image[1, marker_j+8:marker_j1-8, marker_i-8:marker_i+8] = middle_left_image
+        final_predicted_image[2, marker_j1-8:marker_j1+8, marker_i-8:marker_i+8] = bottom_left_image
+        final_predicted_image[1, marker_j-8:marker_j+8, marker_i+8:marker_i1+8] = top_right_image
+        final_predicted_image[0, marker_j+8:, marker_i+8:marker_i1+8] = bottom_right_image
 
+    sample_final_layer = np.zeros((height, width))
+    for i in range(0, height):
+        for j in range(0, width):
+            # Generate a sequence from the final_predicted_image
+            seq = np.random.choice(final_predicted_image[:, i, j], 4, replace=False)
+            # Choose the first number that's not -1
+            for val in seq:
+                if val != -1:
+                    sample_final_layer[i, j] = val
 
-        marker_i = i * 45
-        marker_j = j * 45
-
-        # The current position to add to is i,j
-        current_pos = (i, j)
-        # Divide the matrix
-        left = final_predicted_image[0:37, :]
-        right = final_predicted_image[37:, :]
-        left_n = image[0:16, :]
-        right_n = image[16:, :]
-        stacked_left = np.stack([left, left])
-        stacked_middle = np.stack([right, left_n], axis=0)
-        stacked_right = np.stack([right_n, right_n])
-        # TODO Continue this
-
-
+    return sample_final_layer
 
 
 def write_dataset(image_dir):
