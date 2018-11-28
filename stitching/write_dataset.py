@@ -29,24 +29,26 @@ def get_patches(image_np):
             dim_pad.append((0, dim % step_size))
     dim_pad.append((0, 0))
     image_np = np.pad(image_np, pad_width=dim_pad, mode='constant', constant_values=255)
-    i = 1
-    x_lower, x_higher = 0, 53
-    j = 1
-    y_lower, y_higher = 0, 53
+    marker_j, marker_i = step_size, step_size
+    marker_j1, marker_i1 = step_size + 37, step_size + 37
     slices = []
-    while i <= image_np.shape[0]:
-        while step_size * j <= image_np.shape[1]:
-            patch = image_np[x_lower:x_higher, y_lower:y_higher, :]
-            print(patch.shape)
+    slices.append(image_np[:53, :53])
+    while marker_j1 + 8 <= image_np.shape[1]:
+        slices.append(image_np[marker_j-8:marker_j1+8, :53])
+        marker_j += 37
+        marker_j1 += 37
+    while marker_i + 8 <= image_np.shape[0]:
+        marker_j = step_size
+        marker_j1 = step_size + 37
+        slices.append(image_np[0:53, marker_i-8:marker_i1+8])
+        while marker_j + 8 <= image_np.shape[1]:
+            patch = image_np[marker_j-8:marker_j1+8, marker_i-8:marker_i1+8]
             slices.append(patch)
-            j += 1
-            y_higher = j * step_size
-            y_lower = y_higher - 53
-        j = 1
-        y_lower, y_higher = 0, 53
-        i += 1
-        x_higher = i * step_size
-        x_lower = x_higher - 53
+            marker_j += step_size
+            marker_j1 += step_size
+        marker_i += 37
+        marker_i1 += 37
+
     return slices, image_np
 
 
@@ -71,10 +73,10 @@ def stitch_image(merge_buffer, image_name):
     # Initialize to a non class nd array
     final_predicted_image = np.full((4, height, width), -1)
     for image in pred_images:
-        marker_i = i * 45
-        marker_j = j * 45
-        marker_i1 = (i + 1) * 45
-        marker_j1 = (j + 1) * 45
+        marker_i = 45 + (i - 1) * 37
+        marker_j = 45 + (j - 1) * 37
+        marker_i1 = marker_i + 37
+        marker_j1 = marker_j + 37
         if i == 0 and j == 0:
             final_predicted_image[0, :53, :53] = image
             j += 1
@@ -83,7 +85,7 @@ def stitch_image(merge_buffer, image_name):
             top_image = image[:16, :]
             bottom_image = image[16:, :]
             final_predicted_image[1, marker_j-8:marker_j+8, :53] = top_image
-            final_predicted_image[0, marker_j+8:, :53] = bottom_image
+            final_predicted_image[0, marker_j+8:marker_j1+8, :53] = bottom_image
             if marker_j1 == final_predicted_image.shape[1]:
                 j = 0
                 i += 1
@@ -91,8 +93,8 @@ def stitch_image(merge_buffer, image_name):
                 j += 1
             continue
         if j == 0:
-            top_left_image = image[:37, :16]
-            bottom_left_image = image[37:, :16]
+            top_left_image = image[:-16, :16]
+            bottom_left_image = image[-16:, :16]
             right_image = image[:, 16:]
             final_predicted_image[1, :marker_j1-8, marker_i-8:marker_i+8] = top_left_image
             final_predicted_image[2, marker_j1-8:marker_j1+8, marker_i-8:marker_i+8] = bottom_left_image
