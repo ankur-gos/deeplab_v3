@@ -7,7 +7,7 @@ import imageio
 import tensorflow as tf
 import os
 import numpy as np
-from sklearn.feature_extraction.image import extract_patches
+import matplotlib.pyplot as plt
 
 
 def _int64_feature(value):
@@ -134,7 +134,9 @@ def stitch_image(merge_buffer, image_name):
                 if val != -1:
                     sample_final_layer[i, j] = val
 
-    return sample_final_layer
+    plt.imshow(sample_final_layer)
+    plt.savefig('stitch_results/{}.png'.format(str(image_name)))
+
 
 
 def write_dataset(image_dir):
