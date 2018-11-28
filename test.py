@@ -21,7 +21,7 @@ plt.interactive(False)
 parser = argparse.ArgumentParser()
 
 envarg = parser.add_argument_group('Eval params')
-envarg.add_argument("--model_id", default=16645, type=int, help="Model id name to be loaded.")
+envarg.add_argument("--model_id", default='best', type=str, help="Model id name to be loaded.")
 input_args = parser.parse_args()
 
 # best: 16645

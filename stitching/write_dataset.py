@@ -22,13 +22,16 @@ def _bytes_feature(value):
 def get_patches(image_np):
     dim_pad = []
     step_size = 45
-    for dim in image_np.shape[:-1]:
+    for ind, dim in enumerate(image_np.shape[:-1]):
         if dim < step_size * 2:
             dim_pad.append((0, (step_size * 2) - dim))
         else:
-            dim_pad.append((0, dim % step_size))
+            dim_pad.append((0, step_size - (dim % step_size)))
     dim_pad.append((0, 0))
+    print(image_np.shape)
+    print(dim_pad)
     image_np = np.pad(image_np, pad_width=dim_pad, mode='constant', constant_values=255)
+    print(image_np.shape)
     marker_j, marker_i = step_size, step_size
     marker_j1, marker_i1 = step_size + 37, step_size + 37
     slices = []
@@ -156,7 +159,7 @@ def write_dataset(image_dir):
                 'height': _int64_feature(image_np_pad.shape[0]),
                 'width': _int64_feature(image_np_pad.shape[1]),
                 'image_raw': _bytes_feature(image_raw),
-                'name': _bytes_feature(png)
+                'name': _bytes_feature(png.encode('utf-8'))
             }))
             writer.write(example.SerializeToString())
     return tfrecords_filename

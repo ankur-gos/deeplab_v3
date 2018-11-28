@@ -13,7 +13,7 @@ import os
 import argparse
 import json
 from metrics import *
-from stitching.write_dataset import write_dataset
+from stitching.write_dataset import write_dataset, stitch_image
 
 
 parser = argparse.ArgumentParser()
@@ -24,25 +24,24 @@ input_args = parser.parse_args()
 log_folder = './tboard_logs'
 
 with open(log_folder + '/' + input_args.model_id + '/train/data.json', 'r') as fp:
-    args = json.load(fp)
+    dargs = json.load(fp)
 
 
 class Dotdict(dict):
-    """dot.notation access to dictionary attributes"""
-    _getattr__ = dict.get
-    _setattr__ = dict.__setitem__
-    _delattr__ = dict.__delitem__
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
 
-args = Dotdict(args)
 class_dict = {0: 'background', 1: 'figure', 2: 'table', 3: 'equation', 4: 'text'}
+args = Dotdict(dargs)
 class_labels = [v for v in range((args.number_of_classes+1))]
 class_labels[-1] = 255
 LOG_FOLDER = './tboard_logs'
 TEST_DATASET_DIR="./dataset/tfrecords"
 TEST_FILE = 'test.tfrecords'
 
-processf = write_dataset(args.datadir)
+processf = write_dataset(input_args.datadir)
 
 
 test_filenames = []
@@ -60,12 +59,12 @@ def parse_record(record):
     features = tf.parse_single_example(record, keys_to_features)
 
     image = tf.decode_raw(features['image_raw'], tf.uint8)
-    name = tf.cast(features['name'], tf.string)
+    name = tf.decode_raw(features['name'], tf.float32)
     height = tf.cast(features['height'], tf.int32)
     width = tf.cast(features['width'], tf.int32)
 
     # reshape input and annotation images
-    image = tf.reshape(image, (height, width, 3), name="image_reshape")
+    image = tf.reshape(image, (53, 53, 3), name="image_reshape")
     return tf.to_float(image), (height, width), name
 
 
@@ -79,12 +78,6 @@ probabilities_tf = tf.nn.softmax(logits_tf)
 train_folder = os.path.join(log_folder, input_args.model_id, "train")
 saver = tf.train.Saver()
 
-
-def merge_image(merge_buffer):
-
-    pass
-
-
 with tf.Session() as sess:
     # Create a saver.
     sess.run(tf.local_variables_initializer())
@@ -96,29 +89,29 @@ with tf.Session() as sess:
         try:
             batch_images_np, batch_predictions_np, batch_shapes_np, batch_names_np = \
                 sess.run([batch_images_tf, predictions_tf,  batch_shapes_tf, batch_names_tf])
-            buff_names, buff_item = set(), []
+            buff_names, buff_item = {}, []
             for i in range(batch_predictions_np.shape[0]):
                 pred_image = batch_predictions_np[i]
                 input_image = batch_images_np[i]
                 heights, widths = batch_shapes_np
                 pred_image = np.reshape(pred_image, (53, 53))
                 input_image = np.reshape(input_image, (53, 53, 3))
-                image_name = batch_names_np[i]
+                image_name = batch_names_np[i].tostring()
                 if image_name not in buff_names:
                     buff_names[image_name] = 1
                 buff_item.append((pred_image, input_image, image_name, heights[i], widths[i]))
             merge_buffer.append((buff_item, buff_names))
             if len(merge_buffer) > 1:
                 # Get the buffer name of the first item
-                check_name = merge_buffer[0][1].keys()[-1]
+                check_name = list(merge_buffer[0][1].keys())[-1]
                 # Check the last item
-                if check_name != merge_buffer[-1][1].keys()[-1]:
-                    merge_image(merge_buffer, check_name)
+                if check_name != list(merge_buffer[-1][1].keys())[-1]:
+                    stitch_image(merge_buffer, check_name)
                     merge_buffer = [merge_buffer[-1]]
 
         except tf.errors.OutOfRangeError:
             # Clear the merge buffer
             if len(merge_buffer) > 0:
-                merge_image(merge_buffer, merge_buffer[0][1].keys()[-1])
+                stitch_image(merge_buffer, list(merge_buffer[0][1].keys())[-1])
             break
 
