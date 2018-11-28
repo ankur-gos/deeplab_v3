@@ -2,6 +2,7 @@ import tensorflow as tf
 print("TF version:", tf.__version__)
 import numpy as np
 import matplotlib
+import ipdb
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import network
@@ -108,9 +109,9 @@ with tf.Session() as sess:
     mean_acc = []
     mean_class_IU = {}
 
+    j = 0
     while True:
         try:
-            j = 0
             batch_images_np, batch_predictions_np, batch_labels_np, batch_shapes_np, summary_string = \
                 sess.run([batch_images_tf, predictions_tf, batch_labels_tf, batch_shapes_tf, merged_summary_op])
 
@@ -139,33 +140,37 @@ with tf.Session() as sess:
 
                 # Get bounding boxes of things
                 bounding_boxes_pred = get_bounds(pred_image)
-                bounding_boxes_label = get_bounds(label_image, pixel_dist=0)
+                bounding_boxes_label = get_bounds(label_image, pixel_dist=1)
                 label_boxes = input_image.copy()
                 predicted_boxes = input_image.copy()
                 # TODO: Factor this out and make it general
-                colors = [np.array([90, 50, 60]), np.array([90, 90, 90]), np.array([200, 50, 60]),
-                          np.array([150, 200, 60]), np.array([200, 50, 200])]
+                colors = [np.array([128, 0, 0]), np.array([170, 110, 40]), np.array([230, 190, 255]),
+                          np.array([70, 240, 240]), np.array([200, 50, 200])]
                 for cl in bounding_boxes_pred:
+                    if cl == 0:
+                        continue
                     bxs = bounding_boxes_pred[cl]
                     for coords in bxs:
                         tl_x, tl_y = coords[0]
                         br_x, br_y = coords[1]
-                        coord_color = colors[coords]
-                        predicted_boxes[tl_x:br_x + 1, tl_y] = coord_color
-                        predicted_boxes[tl_x:br_x + 1, br_y] = coord_color
-                        predicted_boxes[tl_x, tl_y:br_y+1] = coord_color
-                        predicted_boxes[br_x, tl_y:br_y+1] = coord_color
+                        coord_color = colors[cl]
+                        predicted_boxes[tl_x:br_x + 1, tl_y-2:tl_y+2] = coord_color
+                        predicted_boxes[tl_x:br_x + 1, br_y-2:br_y+2] = coord_color
+                        predicted_boxes[tl_x-2:tl_x+2, tl_y:br_y+1] = coord_color
+                        predicted_boxes[br_x-2:br_x+2, tl_y:br_y+1] = coord_color
 
                 for cl in bounding_boxes_label:
+                    if cl == 0:
+                        continue
                     bxs = bounding_boxes_label[cl]
                     for coords in bxs:
                         tl_x, tl_y = coords[0]
                         br_x, br_y = coords[1]
-                        coord_color = colors[coords]
-                        label_boxes[tl_x:br_x + 1, tl_y] = coord_color
-                        label_boxes[tl_x:br_x + 1, br_y] = coord_color
-                        label_boxes[tl_x, tl_y:br_y+1] = coord_color
-                        label_boxes[br_x, tl_y:br_y+1] = coord_color
+                        coord_color = colors[cl]
+                        label_boxes[tl_x:br_x + 1, tl_y-2:tl_y+2] = coord_color
+                        label_boxes[tl_x:br_x + 1, br_y-2:br_y+2] = coord_color
+                        label_boxes[tl_x-2:tl_x+2, tl_y:br_y+1] = coord_color  
+                        label_boxes[br_x-2:br_x+2, tl_y:br_y+1] = coord_color  
 
                 pix_acc = pixel_accuracy(pred_image, label_image)
                 m_acc = mean_accuracy(pred_image, label_image)
@@ -184,14 +189,16 @@ with tf.Session() as sess:
                 mean_IoU.append(IoU)
                 mean_freq_weighted_IU.append(freq_weighted_IU)
 
-                f, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(1, 5, figsize=(20, 20))
+                f, ax = plt.subplots(2, 3, figsize=(20, 20))
 
-                ax1.imshow(input_image.astype(np.uint8))
-                ax2.imshow(label_image)
-                ax3.imshow(pred_image)
-                ax4.imshow(label_boxes)
-                ax5.imshow(predicted_boxes)
+                ax[0, 0].imshow(input_image.astype(np.uint8), aspect='auto')
+                ax[0, 1].imshow(label_image, aspect='auto')
+                ax[0, 2].imshow(pred_image, aspect='auto')
+                ax[1, 0].imshow(label_boxes.astype(np.uint8), aspect='auto')
+                ax[1, 1].imshow(predicted_boxes.astype(np.uint8), aspect='auto')
+                f.delaxes(ax[1, 2])
                 plt.savefig('result_image/bX_rX_{}_{}.png'.format(j, i))
+                plt.close()
             j += 1
 
         except tf.errors.OutOfRangeError:
