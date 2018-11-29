@@ -56,7 +56,15 @@ def get_bounds(input_np_image, pixel_dist=5):
                 current_boxes_list[current_pix] = no_boxes + new_boxes
             else:
                 current_boxes_list[current_pix] = [((x, y), (x, y))]
-    print('Image Processed')
+    #for cl in current_boxes_list:
+    #    for box in current_boxes_list[cl]:
+    #        for box2 in current_boxes_list[cl]:
+    #            b1_tl, b1_br = box
+    #            b2_tl, b2_br = box2
+    #            b1_tl_x, b1_tl_y = b1_tl
+    #            b1_br_x, b1_br_y = b1_br
+    #            b2_tl_x, b2_tl_y = b2_tl
+    #            b2_br_x, b2_br_y = b1_br
     return current_boxes_list
 
 

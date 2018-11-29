@@ -6,7 +6,8 @@
 import imageio
 import tensorflow as tf
 from skimage.util.shape import view_as_blocks
-import os import numpy as np
+import os
+import numpy as np
 import matplotlib.pyplot as plt
 import ipdb
 
@@ -78,20 +79,50 @@ def get_patches(image_np):
 
     return slices, image_np
 
+def discrete_cmap(N, base_cmap=None):
+    """Create an N-bin discrete colormap from the specified input map"""
+
+    # Note that if base_cmap is a string or None, you can simply do
+    #    return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return base.from_list(cmap_name, color_list, N)
+
 def concat_image(merge_buffer, image_name):
     pred_images = []
     input_images = []
     height = None
     width = None
-    for buffer in merge_buffer:
-        for buffer_item in buffer[0]:
-            pred_image, input_image, input_name, image_height, image_width = buffer_item
+    o_h = None
+    o_w = None
+    new_buffer = []
+    f = 0
+    for ind, buffer in enumerate(merge_buffer):
+        for ind2, buffer_item in enumerate(buffer[0]):
+            pred_image, input_image, input_name, image_height, image_width, o_height, o_width = buffer_item
             if input_name != image_name:
+                if ind2 != 0:
+                    if image_name not in buffer[1]:
+                        ipdb.set_trace()
+                    del buffer[1][image_name]
+                new_buffer.append((buffer[0][ind2:], buffer[1]))
+                if ind + 1 != len(merge_buffer):
+                    new_buffer = new_buffer + merge_buffer[ind+1:]
+                f = 1
                 break
             height = image_height
             width = image_width
+            o_h = o_height
+            o_w = o_width
             pred_images.append(pred_image)
             input_images.append(input_image)
+        if f == 1:
+            break
+    if height is None or width is None:
+        ipdb.set_trace()
     final_predicted_image = np.full((height, width), -1)
     marker_i = 0
     marker_j = 0
@@ -101,6 +132,7 @@ def concat_image(merge_buffer, image_name):
             marker_i += 513
         final_predicted_image[marker_i:marker_i+513, marker_j:marker_j+513] = image
         marker_j += 513
+
 
     final_input_image = np.full((height, width, 3), -1)
     marker_i = 0
@@ -112,17 +144,44 @@ def concat_image(merge_buffer, image_name):
         final_input_image[marker_i:marker_i+513, marker_j:marker_j+513] = image
         marker_j += 513
 
+    final_predicted_image = final_predicted_image[:o_h, :o_w]
+    final_input_image = final_input_image[:o_h, :o_w]
+
     plt.figure(figsize=(8.5, 11))
-    plt.imshow(final_input_image)
+    plt.imshow(final_input_image, cmap=discrete_cmap(4, 'cubehelix'))
     plt.colorbar()
     plt.savefig('stitch_results/input_{}'.format(image_name.decode()), dpi=300)
     
-    plt.imshow(final_predicted_image)
+    plt.imshow(final_predicted_image, cmap=discrete_cmap(4, 'cubehelix'))
     plt.colorbar()
     plt.savefig('stitch_results/predict_{}'.format(image_name.decode()), dpi=300)
+    plt.close()
+    return new_buffer, final_predicted_image, final_input_image
     
         
-        
+def draw_bounding_boxes(bounding_boxes, input_image, image_name):
+    # Really unnecessary copy but I'm lazy and don't want to think
+    predicted_boxes = input_image.copy()
+    colors = [np.array([128, 0, 0]), np.array([170, 110, 40]), np.array([230, 190, 255]),
+              np.array([70, 240, 240]), np.array([200, 50, 200])]
+    for cl in bounding_boxes:
+        if cl == 0:
+            continue
+        bxs = bounding_boxes[cl]
+        for coords in bxs:
+            tl_x, tl_y = coords[0]
+            br_x, br_y = coords[1]
+            coord_color = colors[cl]
+            predicted_boxes[tl_x:br_x + 1, tl_y-2:tl_y+2] = coord_color
+            predicted_boxes[tl_x:br_x + 1, br_y-2:br_y+2] = coord_color
+            predicted_boxes[tl_x-2:tl_x+2, tl_y:br_y+1] = coord_color
+            predicted_boxes[br_x-2:br_x+2, tl_y:br_y+1] = coord_color
+    plt.figure(figsize=(8.5, 11))
+    plt.imshow(predicted_boxes.astype(np.uint8), aspect='auto', cmap=discrete_cmap(4, 'cubehelix'))
+    plt.colorbar()
+    plt.savefig('stitch_results/bb_{}'.format(image_name.decode()), dpi=300)
+    plt.close()
+
 
 
 
@@ -284,6 +343,8 @@ def write_dataset(image_dir):
         for patch in patches:
             image_raw = patch.tostring()
             example = tf.train.Example(features=tf.train.Features(feature={
+                'original_height': _int64_feature(image_np.shape[0]),
+                'original_width': _int64_feature(image_np.shape[1]),
                 'height': _int64_feature(image_np_pad.shape[0]),
                 'width': _int64_feature(image_np_pad.shape[1]),
                 'image_raw': _bytes_feature(image_raw),

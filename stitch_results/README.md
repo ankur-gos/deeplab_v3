@@ -1,1 +1,0 @@
-Folder for stitch results
