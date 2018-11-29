@@ -8,4 +8,5 @@ tboard_logs/
 result_image/
 stitch_results/*.png
 stitch_results/*.jpg
+process.tfrecords
 
