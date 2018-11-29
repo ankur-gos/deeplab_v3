@@ -8,6 +8,7 @@ import tensorflow as tf
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import ipdb
 
 
 def _int64_feature(value):
@@ -28,29 +29,37 @@ def get_patches(image_np):
         else:
             dim_pad.append((0, step_size - (dim % step_size)))
     dim_pad.append((0, 0))
-    print(image_np.shape)
-    print(dim_pad)
     image_np = np.pad(image_np, pad_width=dim_pad, mode='constant', constant_values=255)
-    print(image_np.shape)
     marker_j, marker_i = step_size, step_size
     marker_j1, marker_i1 = step_size + 37, step_size + 37
     slices = []
     slices.append(image_np[:53, :53])
-    while marker_j1 + 8 <= image_np.shape[1]:
-        slices.append(image_np[marker_j-8:marker_j1+8, :53])
-        marker_j += 37
-        marker_j1 += 37
-    while marker_i + 8 <= image_np.shape[0]:
-        marker_j = step_size
-        marker_j1 = step_size + 37
-        slices.append(image_np[0:53, marker_i-8:marker_i1+8])
-        while marker_j + 8 <= image_np.shape[1]:
-            patch = image_np[marker_j-8:marker_j1+8, marker_i-8:marker_i1+8]
+    slices.append(image_np[37:90, 37:90])
+    slices.append(image_np[37:90, :53])
+    slices.append(image_np[:53, 37:90])
+    marker_i, marker_j = 90, 90
+    marker_i1, marker_j1 = 135, 135
+    while marker_j1 <= image_np.shape[0]:
+        slices.append(image_np[marker_j-8:marker_j1, :53])
+        marker_j += 45
+        marker_j1 += 45
+    marker_j, marker_j1 = 90, 135
+    while marker_i1 <= image_np.shape[1]:
+        slices.append(image_np[:53, marker_i-8:marker_i1])
+        marker_i += 45
+        marker_i1 += 45
+    marker_i = 90 
+    marker_i1 = 135
+    while marker_i1 <= image_np.shape[1]:
+        marker_j = 90
+        marker_j1 = 135
+        while marker_j1 <= image_np.shape[0]:
+            patch = image_np[marker_j-8:marker_j1, marker_i-8:marker_i1]
             slices.append(patch)
             marker_j += step_size
             marker_j1 += step_size
-        marker_i += 37
-        marker_i1 += 37
+        marker_i += step_size
+        marker_i1 += step_size
 
     return slices, image_np
 
@@ -63,7 +72,7 @@ def stitch_image(merge_buffer, image_name):
     height = None
     width = None
     for buffer in merge_buffer:
-        for buffer_item, _ in buffer:
+        for buffer_item in buffer[0]:
             pred_image, input_image, input_name, image_height, image_width = buffer_item
             if input_name != image_name:
                 break
@@ -76,56 +85,113 @@ def stitch_image(merge_buffer, image_name):
     # Initialize to a non class nd array
     final_predicted_image = np.full((4, height, width), -1)
     for image in pred_images:
-        marker_i = 45 + (i - 1) * 37
-        marker_j = 45 + (j - 1) * 37
-        marker_i1 = marker_i + 37
-        marker_j1 = marker_j + 37
+        marker_i = 45 * i - 8
+        marker_j = 45 * j - 8
+        marker_i1 = 45 * (i + 1) 
+        marker_j1 = 45 * (j + 1) 
         if i == 0 and j == 0:
             final_predicted_image[0, :53, :53] = image
             j += 1
             continue
-        if i == 0:
+        if i == 0 and j == 1:
             top_image = image[:16, :]
             bottom_image = image[16:, :]
-            final_predicted_image[1, marker_j-8:marker_j+8, :53] = top_image
-            final_predicted_image[0, marker_j+8:marker_j1+8, :53] = bottom_image
+            final_predicted_image[1, 37:53, :53] = top_image
+            final_predicted_image[0, 53:90, :53] = bottom_image
+            j += 1
+            continue
+        if i == 0:
+            top_image = image[:8, :]
+            bottom_image = image[8:, :]
+            final_predicted_image[1, marker_j:marker_j+8, :53] = top_image
+            final_predicted_image[0, marker_j+8:marker_j1, :53] = bottom_image
             if marker_j1 == final_predicted_image.shape[1]:
                 j = 0
                 i += 1
             else:
                 j += 1
             continue
-        if j == 0:
+        if i == 1 and j == 0:
             top_left_image = image[:-16, :16]
             bottom_left_image = image[-16:, :16]
             right_image = image[:, 16:]
-            final_predicted_image[1, :marker_j1-8, marker_i-8:marker_i+8] = top_left_image
-            final_predicted_image[2, marker_j1-8:marker_j1+8, marker_i-8:marker_i+8] = bottom_left_image
-            final_predicted_image[0, :marker_j1+8, marker_i+8:marker_i1+8] = right_image
+            final_predicted_image[1, :37, 37:53] = top_left_image
+            final_predicted_image[2, 37:53, 37:53] = bottom_left_image
+            final_predicted_image[0, :53, 53:90] = right_image
             j += 1
             continue
-        if marker_j == final_predicted_image.shape[1] - 45:
+        if i == 1 and j == 1:
             top_left_image = image[:16, :16]
-            bottom_left_image = image[16:, :16]
+            middle_left_image = image[16:-8, :16]
+            bottom_left_image = image[-8:, :16]
             top_right_image = image[:16, 16:]
             bottom_right_image = image[16:, 16:]
-            final_predicted_image[3, marker_j-8:marker_j+8, marker_i-8:marker_i+8] = top_left_image
-            final_predicted_image[1, marker_j+8:, marker_i-8:marker_i+8] = bottom_left_image
-            final_predicted_image[1, marker_j-8:marker_j+8, marker_i+8:marker_i1+8] = top_right_image
-            final_predicted_image[0, marker_j+8:, marker_i+8:marker_i1+8] = bottom_right_image
+            final_predicted_image[3, 37:53, 37:53] = top_left_image
+            final_predicted_image[1, 53:82, 37:53] = middle_left_image
+            final_predicted_image[2, 82:90, 37:53] = bottom_left_image
+            final_predicted_image[1, 37:53, 53:90] = top_right_image
+            final_predicted_image[0, 53:90, 53:90] = bottom_right_image
+            j += 1
+            continue
+        if i == 1 and marker_j1 == final_predicted_image.shape[1]:
+            top_left_image = image[:8, :16]
+            bottom_left_image = image[8:, :16]
+            top_right_image = image[:8, 16:]
+            bottom_right_image = image[8:, 16:]
+            final_predicted_image[3, marker_j:marker_j+8, 37:53] = top_left_image
+            final_predicted_image[1, marker_j+8:, 37:53] = bottom_left_image
+            final_predicted_image[1, marker_j:marker_j+8, 53:90] = top_right_image
+            final_predicted_image[0, marker_j+8:, 53:90] = bottom_right_image
+            i += 1
+            j = 0
+            continue
+        if j == 0:
+            top_left_image = image[:-16, :8]
+            bottom_left_image = image[-16:, :8]
+            right_image = image[:, 8:]
+            final_predicted_image[1, :37, marker_i:marker_i+8] = top_left_image
+            final_predicted_image[2, 37:53, marker_i:marker_i+8] = bottom_left_image
+            final_predicted_image[0, :53, marker_i+8:marker_i1] = right_image
+            j += 1
+            continue
+        if j == 1:
+            top_left_image = image[:16, :8]
+            middle_left_image = image[16:-8, :8]
+            bottom_left_image = image[-8:, :8]
+            top_right_image = image[:16, 8:]
+            bottom_right_image = image[16:, 8:]
+            final_predicted_image[3, marker_j:marker_j+16, marker_i:marker_i+8] = top_left_image
+            final_predicted_image[1, marker_j+16:marker_j1-8, marker_i:marker_i+8] = middle_left_image
+            final_predicted_image[2, marker_j1-8:marker_j1, marker_i:marker_i+8] = bottom_left_image
+            final_predicted_image[1, marker_j:marker_j+16, marker_i+8:marker_i1] = top_right_image
+            final_predicted_image[0, marker_j+16:marker_j1, marker_i+8:marker_i1] = bottom_right_image
+            j += 1
+            continue
+        if marker_j1 == final_predicted_image.shape[1]:
+            top_left_image = image[:8, :8]
+            bottom_left_image = image[8:, :8]
+            top_right_image = image[:8, 8:]
+            bottom_right_image = image[8:, 8:]
+            final_predicted_image[3, marker_j:marker_j+8, marker_i:marker_i+8] = top_left_image
+            final_predicted_image[1, marker_j+8:, marker_i:marker_i+8] = bottom_left_image
+            final_predicted_image[1, marker_j:marker_j+8, marker_i+8:marker_i1] = top_right_image
+            final_predicted_image[0, marker_j+8:, marker_i+8:marker_i1] = bottom_right_image
             j = 0
             i += 1
             continue
-        top_left_image = image[:16, :16]
-        middle_left_image = image[16:-16, :16]
-        bottom_left_image = image[-16:, :16]
-        top_right_image = image[:16, 16:]
-        bottom_right_image = image[16:, 16:]
-        final_predicted_image[3, marker_j-8:marker_j+8, marker_i-8:marker_i+8] = top_left_image
-        final_predicted_image[1, marker_j+8:marker_j1-8, marker_i-8:marker_i+8] = middle_left_image
-        final_predicted_image[2, marker_j1-8:marker_j1+8, marker_i-8:marker_i+8] = bottom_left_image
-        final_predicted_image[1, marker_j-8:marker_j+8, marker_i+8:marker_i1+8] = top_right_image
-        final_predicted_image[0, marker_j+8:, marker_i+8:marker_i1+8] = bottom_right_image
+        top_left_image = image[:8, :8]
+        middle_left_image = image[8:-8, :8]
+        bottom_left_image = image[-8:, :8]
+        top_right_image = image[:8, 8:]
+        bottom_right_image = image[8:, 8:]
+        if final_predicted_image[0, 0, marker_i:marker_i+8].shape[0] == 0:
+            ipdb.set_trace()
+        final_predicted_image[3, marker_j:marker_j+8, marker_i:marker_i+8] = top_left_image
+        final_predicted_image[1, marker_j+8:marker_j1-8, marker_i:marker_i+8] = middle_left_image
+        final_predicted_image[2, marker_j1-8:marker_j1, marker_i:marker_i+8] = bottom_left_image
+        final_predicted_image[1, marker_j:marker_j+8, marker_i+8:marker_i1] = top_right_image
+        final_predicted_image[0, marker_j+8:marker_j1, marker_i+8:marker_i1] = bottom_right_image
+        j += 1
 
     sample_final_layer = np.zeros((height, width))
     for i in range(0, height):
@@ -138,7 +204,7 @@ def stitch_image(merge_buffer, image_name):
                     sample_final_layer[i, j] = val
 
     plt.imshow(sample_final_layer)
-    plt.savefig('stitch_results/{}.png'.format(str(image_name)))
+    plt.savefig('stitch_results/{}'.format(image_name.decode()))
 
 
 
