@@ -5,6 +5,7 @@
 
 import imageio
 import tensorflow as tf
+from skimage.util.shape import view_as_blocks
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,6 +18,22 @@ def _int64_feature(value):
 
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+def get_blocks(image_np):
+    dim_pad = []
+    # Make sure the image can be split evenly
+    for ind, dim in enumerate(image_np.shape[:-1]):
+        dim_pad.append((0, 53 - (dim % 53)))
+    dim_pad.append((0, 0))
+    image_np = np.pad(image_np, pad_width=dim_pad, mode='constant', constant_values=255)
+    blocks = view_as_blocks(image_np, block_shape=(53, 53, 3))
+    blocks = blocks.squeeze()
+    block_list = []
+    for i in range(blocks.shape[0]):
+        for j in range(blocks.shape[1]):
+            block_list.append(blocks[i, j])
+    print(block_list[0].shape)
+    return block_list, image_np
 
 
 # TODO: Factor out magic numbers here
@@ -62,6 +79,52 @@ def get_patches(image_np):
         marker_i1 += step_size
 
     return slices, image_np
+
+def concat_image(merge_buffer, image_name):
+    pred_images = []
+    input_images = []
+    height = None
+    width = None
+    for buffer in merge_buffer:
+        for buffer_item in buffer[0]:
+            pred_image, input_image, input_name, image_height, image_width = buffer_item
+            if input_name != image_name:
+                break
+            height = image_height
+            width = image_width
+            pred_images.append(pred_image)
+            input_images.append(input_image)
+    final_predicted_image = np.full((height, width), -1)
+    marker_i = 0
+    marker_j = 0
+    for image in pred_images:
+        if marker_j == width:
+            marker_j = 0
+            marker_i += 53
+        final_predicted_image[marker_i:marker_i+53, marker_j:marker_j+53] = image
+        marker_j += 53
+
+    final_input_image = np.full((height, width, 3), -1)
+    marker_i = 0
+    marker_j = 0
+    for image in input_images:
+        if marker_j == width:
+            marker_j = 0
+            marker_i += 53
+        final_input_image[marker_i:marker_i+53, marker_j:marker_j+53] = image
+        marker_j += 53
+
+    plt.imshow(final_input_image)
+    plt.colorbar()
+    plt.savefig('stitch_results/input_{}'.format(image_name.decode()), dpi=1000)
+    
+    plt.imshow(final_predicted_image)
+    plt.colorbar()
+    plt.savefig('stitch_results/predict_{}'.format(image_name.decode()), dpi=1000)
+    
+        
+        
+
 
 
 # TODO: Factor our magic numbers here
@@ -218,7 +281,7 @@ def write_dataset(image_dir):
     writer = tf.python_io.TFRecordWriter(tfrecords_filename)
     for png in os.listdir(image_dir):
         image_np = imageio.imread(os.path.join(image_dir, png))
-        patches, image_np_pad = get_patches(image_np)
+        patches, image_np_pad = get_blocks(image_np)
         for patch in patches:
             image_raw = patch.tostring()
             example = tf.train.Example(features=tf.train.Features(feature={

@@ -13,7 +13,7 @@ import os
 import argparse
 import json
 from metrics import *
-from stitching.write_dataset import write_dataset, stitch_image
+from stitching.write_dataset import write_dataset, stitch_image, concat_image
 
 
 parser = argparse.ArgumentParser()
@@ -106,12 +106,12 @@ with tf.Session() as sess:
                 check_name = list(merge_buffer[0][1].keys())[-1]
                 # Check the last item
                 if check_name != list(merge_buffer[-1][1].keys())[-1]:
-                    stitch_image(merge_buffer, check_name)
+                    concat_image(merge_buffer, check_name)
                     merge_buffer = [merge_buffer[-1]]
 
         except tf.errors.OutOfRangeError:
             # Clear the merge buffer
             if len(merge_buffer) > 0:
-                stitch_image(merge_buffer, list(merge_buffer[0][1].keys())[-1])
+                concat_image(merge_buffer, list(merge_buffer[0][1].keys())[-1])
             break
 
